@@ -1,66 +1,100 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+'use client';
+
+import { useState, useEffect } from 'react';
+import ProductCard from '@/components/ProductCard';
+import SearchBar from '@/components/SearchBar';
+import { Product } from '@/types/product';
+import styles from './page.module.css';
 
 export default function Home() {
-  return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.tsx file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+  const [products, setProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('https://fakestoreapi.com/products?limit=5');
+      if (!response.ok) {
+        throw new Error('Failed to fetch products');
+      }
+      const data = await response.json();
+      setProducts(data);
+      setFilteredProducts(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = (query: string) => {
+    if (!query.trim()) {
+      setFilteredProducts(products);
+    } else {
+      const filtered = products.filter(product =>
+        product.title.toLowerCase().includes(query.toLowerCase()) ||
+        product.category.toLowerCase().includes(query.toLowerCase())
+      );
+      setFilteredProducts(filtered);
+    }
+  };
+
+  if (loading) {
+    return (
+      <main className="container">
+        <div className="loading">
+          <div className="spinner"></div>
+          Loading products...
         </div>
       </main>
-    </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="container">
+        <div className={styles.error}>
+          <h2>Error loading products</h2>
+          <p>{error}</p>
+          <button onClick={fetchProducts} className={styles.retryBtn}>
+            Try Again
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="container">
+      <div className={styles.hero}>
+        <h1 className={styles.title}>Welcome to Product Store</h1>
+        <p className={styles.subtitle}>
+          Discover amazing products from our curated collection
+        </p>
+        <SearchBar onSearch={handleSearch} />
+      </div>
+
+      <section className={styles.productsSection}>
+        <h2 className={styles.sectionTitle}>Featured Products</h2>
+        
+        {filteredProducts.length === 0 ? (
+          <div className={styles.noResults}>
+            <p>No products found matching your search.</p>
+          </div>
+        ) : (
+          <div className={styles.productsGrid}>
+            {filteredProducts.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        )}
+      </section>
+    </main>
   );
 }
